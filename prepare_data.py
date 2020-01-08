@@ -15,7 +15,6 @@ def getSymVar(columns):
 def prepare_data(samedata_file,diffdata_file):
     if diffdata_file==None:
         data=pd.read_csv(samedata_file)
-        embed()
         return (data[data.columns[2:]].to_numpy(),data["Y"].to_numpy(),data.columns[2:],getSymVar(data.columns[2:]))
     same_data=pd.read_csv(samedata_file,header=None)
     same_data.insert(0, 'Y', [0]*len(same_data))
@@ -42,17 +41,15 @@ def prepare_data(samedata_file,diffdata_file):
     select=VarianceThreshold(0.00001)
     #np.random.shuffle(x)
     #np.random.shuffle(y)
-    select.fit(data, data["Y"])
+    select.fit(data)
     #select=RFE(chi2, k=20)
     index=np.where(select.get_support())[0]
     now = datetime.datetime.now()
     index=list(set(index)-set([0]))
     x=data.ix[:,index]
     to_del_index=list(set(range(data.shape[-1]))-set([0])-set(index))
-    embed()
     data.drop(data.columns[to_del_index],axis=1,inplace=True)
     #del data.ix[:,to_del_index]
 
-    embed()
     data.to_csv(now.strftime("%Y_%m_%d_%H_%M_%S.csv"))
     return (x.to_numpy(),data["Y"].to_numpy(),x.columns,getSymVar(x.columns))
