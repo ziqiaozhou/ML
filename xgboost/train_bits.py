@@ -213,7 +213,9 @@ class LeakageLearner:
             base=1;
             for x_range in continuous[xtype]:
                 x_name=x_range[2]
-                for i in range(x_range[0],x_range[1]):
+                start=x_range[0]
+                end=x_range[1]+start
+                for i in range(start,end):
                     name="%s_%d"%(xtype,i)
                     x_val=x_val+pddata[name]*base
                     base=base*2
