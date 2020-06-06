@@ -212,10 +212,10 @@ class LeakageLearner:
                 continuous[w[0]].append((int(w[1]),int(w[2]),w[3]))
         ncols=pddata.shape[1]
         for xtype in continuous:
-            x_val=0
             base=1;
             for x_range in continuous[xtype]:
                 x_name=x_range[2]
+                x_val=0
                 start=x_range[0]
                 end=x_range[1]+start
                 valid=True
