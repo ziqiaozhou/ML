@@ -4,8 +4,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import VarianceThreshold
 from IPython import embed
 import matplotlib.pyplot as plt
-from sklearn.cluster import SpectralClustering 
-import tensorflow as tf
+from sklearn.cluster import SpectralClustering
+#import tensorflow as tf
 import functools
 from sklearn.svm import LinearSVC
 from sklearn import preprocessing
@@ -15,7 +15,7 @@ import pandas as pd
 def mean_absolute_percentage_error(y_pred, y_true, sample_weights=None):
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
-    assert len(y_true) == len(y_pred) 
+    assert len(y_true) == len(y_pred)
     if np.any(y_true==0):
         print("Found zeroes in y_true. MAPE undefined. Removing from set...")
         idx = np.where(y_true==0)
@@ -24,7 +24,7 @@ def mean_absolute_percentage_error(y_pred, y_true, sample_weights=None):
         if type(sample_weights) != type(None):
             sample_weights = np.array(sample_weights)
             sample_weights = np.delete(sample_weights, idx)
-        
+
     if type(sample_weights) == type(None):
         return(np.mean(((y_pred - y_true +1)*0.5 / y_pred)) * 100)
     else:
@@ -45,19 +45,19 @@ class CustomLinearModel:
     Linear model: Y = XB, fit by minimizing the provided loss_function
     with L2 regularization
     """
-    def __init__(self, loss_function=mean_absolute_percentage_error, 
-                 X=None, Y=None, sample_weights=None, beta_init=None, 
+    def __init__(self, loss_function=mean_absolute_percentage_error,
+                 X=None, Y=None, sample_weights=None, beta_init=None,
                  regularization=0.00012):
         self.regularization = regularization
         self.beta = None
         self.loss_function = loss_function
         self.sample_weights = sample_weights
         self.beta_init = beta_init
-        
+
         self.X = X
         self.Y = Y
-            
-    
+
+
     def predict(self, X):
         prediction = np.matmul(X, self.beta)
         return(prediction)
@@ -67,23 +67,23 @@ class CustomLinearModel:
             self.predict(self.X), self.Y, sample_weights=self.sample_weights
         )
         return(error)
-    
+
     def l2_regularized_loss(self, beta):
         self.beta = beta
         return(self.model_error() + \
                sum(self.regularization*np.array(self.beta)**2))
-    
-    def fit(self, maxiter=250):        
+
+    def fit(self, maxiter=250):
         # Initialize beta estimates (you may need to normalize
         # your data and choose smarter initialization values
         # depending on the shape of your loss function)
         if type(self.beta_init)==type(None):
             # set beta_init = 1 for every feature
             self.beta_init = np.array([1]*self.X.shape[1])
-        else: 
+        else:
             # Use provided initial values
             pass
-            
+
         if self.beta!=None and all(self.beta_init == self.beta):
             print("Model already fit once; continuing fit with more itrations.")
         #res = basinhopping(self.l2_regularize_loss)
@@ -113,7 +113,7 @@ class LinearFeature:
 		for attribute in xdata.columns:
 			data_scaled=data_scaled.sort_values([attribute])
 			z=data_scaled.iloc[1:,:]
-			z.index=z.index-1 
+			z.index=z.index-1
 			candidates=(z.to_numpy()+data_scaled.iloc[0:-1,].to_numpy())/2
 			candidates=candidates[candidates[:,0]==0.5][:,1:]
 			midpoints=midpoints.append(pd.DataFrame(candidates,columns=xdata.columns),ignore_index=True,sort=False)
@@ -135,7 +135,7 @@ class LinearFeature:
 		#idx=np.where(abs(clf.coef_)>(maxc-minc)*0.2+minc)[1]
 		trueIdx=np.where(y==1)[0]
 		falseIdx=np.where(y==0)[0]
-		data_scaled=(pddata-pddata.min()).div(pddata.max()-pddata.min())	
+		data_scaled=(pddata-pddata.min()).div(pddata.max()-pddata.min())
 		midpoints=self.data2midpoints(pddata,Xdata)
 		anchors=midpoints.sample(NStep)
 		sample_weight=compute_sample_weight('balanced',y)
@@ -170,7 +170,7 @@ class LinearFeature:
 		self.left_data=pddata.iloc[leftIdx]
 		self.right_data=pddata.iloc[rightIdx]
 		self.clf=clf
-		self.clf2=clf2 
+		self.clf2=clf2
 		"""
 		#self.idx=idx
 		self.feature_name=pddata.columns[1:]
@@ -183,7 +183,7 @@ class LinearFeature:
 		if self.right_data.Y.unique().shape[0]==2:
 			rf=LinearFeature()
 			rf.fit(self.right_data)
-		return lf,rf	
+		return lf,rf
 	def features(self,threshold=0.7):
 		features={}
 		added={}
@@ -249,4 +249,3 @@ if __name__=="__main__":
         x,y,feature_names,symbol_vars=prepare_data(args.files[0])
     else:
         x,y,feature_names,symbol_vars=prepare_data(samedata_file,diffdata_file)
-
