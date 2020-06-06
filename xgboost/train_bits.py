@@ -228,7 +228,7 @@ class LeakageLearner:
                     x_val=x_val+pddata[name]*base
                     base=base*2
                 symbol_vars[xtype].append(x_name)
-                if x_name not in pddata.columns and valid:
+                if (x_name not in pddata.columns) and valid:
                     print("add",x_name)
                     pddata.insert(ncols,x_name, x_val)
                     intCols.append(x_name)
