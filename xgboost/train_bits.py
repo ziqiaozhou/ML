@@ -137,11 +137,11 @@ class LeakageLearner:
             attacker_learner_constraints.append(symbol_vars["I"]+symbol_vars["c"])
             attacker_learner_constraints.append(symbol_vars["Ialt"]+symbol_vars["c"])
         """
-        params={'max_depth': self.args.depth+2,
+        params={'max_depth': self.args.depth,
                 'eta': 1,
-                'nthread':8}
+                'nthread':16}
         params['objective'] = 'binary:logistic'
-        params['max_leaves']=100
+        params['max_leaves']=64
         #params['tree_method']='hist'
         params['grow_policy']='lossguide'
         #params['subsample']=0.9
