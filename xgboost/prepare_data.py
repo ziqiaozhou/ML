@@ -1,9 +1,12 @@
+import argparse
+
 from sklearn.svm import SVR
 from IPython import embed
 import pandas as pd
 import datetime
 import numpy as np
 from sklearn.feature_selection import RFE, VarianceThreshold,SelectKBest, chi2
+from sklearn.decomposition import SparsePCA
 def getSymVar(columns):
     symbol_vars={"c":[],"I":[],"Ialt":[],"s":[],"salt":[]}
     for offset,sym_name in enumerate(columns):
@@ -52,6 +55,23 @@ def prepare_data(samedata_file,diffdata_file):
     to_del_index=list(set(range(data.shape[-1]))-set([0])-set(index))
     data.drop(data.columns[to_del_index],axis=1,inplace=True)
     #del data.ix[:,to_del_index]
-
     data.to_csv(now.strftime("%Y_%m_%d_%H_%M_%S.csv"))
+    #transformer = SparsePCA(n_components=, random_state=0)
+    #transformer.fit(data.to_numpy())
+    #X_transformed = transformer.transform(data.to_numpy())
     return (x.to_numpy(),data["Y"].to_numpy(),x.columns,getSymVar(x.columns))
+
+if __name__=="__main__":
+    parser = argparse.ArgumentParser(description='match symbol')
+    parser.add_argument('files',metavar='files',type=str,nargs="+",help='same file, diff file')
+    parser.add_argument('--debug',type=bool,default=False,help='decision rule depth')
+    parser.add_argument('--depth',type=int,default=10,help='decision rule depth')
+    parser.add_argument('--outname',type=str,default="xgboost_1",help='outname')
+    parser.add_argument('--label',type=int,default=0,help='label value')
+    args=parser.parse_args()
+    if len(args.files)==1:
+        prepare_data(args.files[0])
+    else:
+        prepare_data(args.files[0],args.files[1])
+
+
