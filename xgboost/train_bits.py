@@ -217,6 +217,9 @@ class LeakageLearner:
                 end=x_range[1]+start
                 for i in range(start,end):
                     name="%s_%d"%(xtype,i)
+                    if name not in pddata.columns:
+                        x_val=0
+                        break
                     x_val=x_val+pddata[name]*base
                     base=base*2
                 symbol_vars[xtype].append(x_name)
