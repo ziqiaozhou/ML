@@ -165,7 +165,10 @@ class LeakageLearner:
                                  recall_min=0.01,
                                  verbose=1,
                                  feature_names=feature_names)
-        clf.fit_xgbmodel(self.pddata, model)
+        evaldata=self.pddata.sample(frac=0.3, replace=True)
+        evaldata=evaldata.reset_index()
+        eval_sample_weight=class_weight.compute_sample_weight("balanced",evaldata['Y'])
+        clf.fit_xgbmodel(evaldata, model, eval_sample_weight)
         clf.rules_.sort(key=lambda x: x[1],reverse=True)
         rules={}
         for i in range(len(clf.rules_)):
@@ -215,16 +218,20 @@ class LeakageLearner:
                 x_name=x_range[2]
                 start=x_range[0]
                 end=x_range[1]+start
+                valid=True
                 for i in range(start,end):
                     name="%s_%d"%(xtype,i)
                     if name not in pddata.columns:
                         x_val=0
+                        valid=False
                         break
                     x_val=x_val+pddata[name]*base
                     base=base*2
                 symbol_vars[xtype].append(x_name)
-            pddata.insert(ncols,x_name, x_val)
-            intCols.append(x_name)
+                if x_name not in pddata.columns and valid:
+                    print("add",x_name)
+                    pddata.insert(ncols,x_name, x_val)
+                    intCols.append(x_name)
         intData=pddata[intCols]
         lf=LinearFeature()
         lf.fit(intData)
