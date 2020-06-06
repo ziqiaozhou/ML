@@ -44,7 +44,20 @@ def toLatex(rule_scores,filename):
     with open(filename,'w') as f:
         f.write("\n".join(ret))
 
-
+def trim_rule(rule_score,pddata,thres=0.05):
+	rule=rule_score[0]
+	conds=rule.split(" and ")
+	score=rule_score[1]
+	newcond=set(conds)
+	for cond in conds:
+		newcond.remove(cond)
+		newrule=" and ".join(list(newcond))
+		new_score=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'])
+		if new_score[0]<score[0]*(1-thres):
+			newcond.add(cond)
+	newrule=" and ".join(list(newcond))
+	newscore=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'])
+	return [newrule,newscore]
 
 class LeakageLearner:
     def __init__(self,args):
@@ -71,8 +84,6 @@ class LeakageLearner:
         newrule=" and ".join(list(newcond))
         newscore=xgbtree_rule_perf(str(newrule),self.pddata,self.pddata['Y'])
         return [newrule,newscore]
- 
-
     def saverules(self,rules,allrstat,filename):
         allscores=allrstat[1]
         with open(filename,'w') as f:
@@ -126,11 +137,11 @@ class LeakageLearner:
             attacker_learner_constraints.append(symbol_vars["I"]+symbol_vars["c"])
             attacker_learner_constraints.append(symbol_vars["Ialt"]+symbol_vars["c"])
         """
-        params={'max_depth': 8,
-                        'eta': 1,
-                        'nthread':8}
+        params={'max_depth': self.args.depth+2,
+                'eta': 1,
+                'nthread':8}
         params['objective'] = 'binary:logistic'
-        params['max_leaves']=16
+        params['max_leaves']=100
         #params['tree_method']='hist'
         params['grow_policy']='lossguide'
         #params['subsample']=0.9
@@ -144,10 +155,9 @@ class LeakageLearner:
         #params['scale_pos_weight']=np.where(y==0)[0].shape[0]/np.where(y==1)[0].shape[0]
         if self.args.debug:
             embed()
-        model=xgboost.train(
-                                params = params,
-                                dtrain=data,
-                                num_boost_round=10,
+        model=xgboost.train(params = params,
+                            dtrain=data,
+                            num_boost_round=self.args.ntrees,
                         )
         model.dump_model(self.modelfile, with_stats=True)
         clf = SkopeRules(max_depth_duplication=self.args.depth,
@@ -159,11 +169,11 @@ class LeakageLearner:
         clf.rules_.sort(key=lambda x: x[1],reverse=True)
         rules={}
         for i in range(len(clf.rules_)):
-                r=self.trim_rule(clf.rules_[i])
-                rules[r[0]]=r[1]
+            r=trim_rule(clf.rules_[i],self.pddata)
+            rules[r[0]]=r[1]
         rulelist=[]
         for r in rules:
-                rulelist.append([r,rules[r]])
+            rulelist.append([r,rules[r]])
         rulelist.sort(key=lambda x: x[1],reverse=True)
         usedLinear={}
         toLatex(rulelist,self.rule_latex)
@@ -243,9 +253,9 @@ class LeakageLearner:
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='match symbol')
     parser.add_argument('files',metavar='files',type=str,nargs="+",help='same file, diff file')
-    
     parser.add_argument('--debug',type=bool,default=False,help='decision rule depth')
-    parser.add_argument('--depth',type=int,default=10,help='decision rule depth')
+    parser.add_argument('--depth',type=int,default=6,help='decision rule depth')
+    parser.add_argument('--ntrees',type=int,default=10,help='decision trees')
     parser.add_argument('--outname',type=str,default="xgboost_1",help='outname')
     parser.add_argument('--symbol',type=str,default="symbol.txt",help='outname')
     parser.add_argument('--label',type=int,default=1,help='label value')

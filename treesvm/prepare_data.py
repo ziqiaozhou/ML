@@ -1,9 +1,9 @@
-import numpy as np
-from sklearn.feature_selection import RFE, VarianceThreshold,SelectKBest, chi2
 from sklearn.svm import SVR
 from IPython import embed
 import pandas as pd
 import datetime
+import numpy as np
+from sklearn.feature_selection import RFE, VarianceThreshold,SelectKBest, chi2
 def getSymVar(columns):
     symbol_vars={"c":[],"I":[],"Ialt":[],"s":[],"salt":[]}
     for offset,sym_name in enumerate(columns):
@@ -16,9 +16,9 @@ def prepare_data(samedata_file,diffdata_file):
     if diffdata_file==None:
         data=pd.read_csv(samedata_file)
         return (data[data.columns[2:]].to_numpy(),data["Y"].to_numpy(),data.columns[2:],getSymVar(data.columns[2:]))
-    same_data=pd.read_csv(samedata_file,header=None)
+    same_data=pd.read_csv(samedata_file,header=None,na_values=[' x'])
     same_data.insert(0, 'Y', [0]*len(same_data))
-    diff_data=pd.read_csv(diffdata_file,header=None)
+    diff_data=pd.read_csv(diffdata_file,header=None,na_values=[' x'])
     diff_data.insert(0, 'Y', [1]*len(diff_data))
     #same_data=np.genfromtxt(samedata_file,filling_values=2,delimiter=",")
     #diff_data=np.genfromtxt(diffdata_file,filling_values=2,delimiter=",")
@@ -38,15 +38,17 @@ def prepare_data(samedata_file,diffdata_file):
         cols.append("none")
     data.columns=cols
     del data["none"]
+    c=data.isna().any()[lambda x: x].index.to_list()
+    data.drop(columns=c)
     select=VarianceThreshold(0.00001)
     #np.random.shuffle(x)
     #np.random.shuffle(y)
-    select.fit(data)
+    select.fit(data, data["Y"])
     #select=RFE(chi2, k=20)
     index=np.where(select.get_support())[0]
     now = datetime.datetime.now()
     index=list(set(index)-set([0]))
-    x=data.ix[:,index]
+    x=data.loc[:,data.columns[index]] 
     to_del_index=list(set(range(data.shape[-1]))-set([0])-set(index))
     data.drop(data.columns[to_del_index],axis=1,inplace=True)
     #del data.ix[:,to_del_index]

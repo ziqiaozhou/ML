@@ -217,11 +217,11 @@ class SVCTree:
             else:
                 coef=self.clf.coef_
             intercept=self.clf.intercept_[0]
-            intercept=intercept/small
+            intercept=intercept
             avg=np.mean(np.abs(coef))
-            limit=max(avg,0.01*large)
+            #limit=max(avg,0.01*large)
             sorted_index=np.argsort(np.abs(coef))
-            choice=np.where(np.abs(coef)>avg/(self.feature.shape[-1]))[0]
+            choice=np.where(np.abs(coef)>avg*0.1)[0]
             selected_coef=coef[choice]
             small=max(1.0,min(intercept,np.min(np.abs(selected_coef))))
             choice= sorted_index[-selected_coef.shape[-1]:]
@@ -298,6 +298,9 @@ class SVCTree:
         pY=best_pY
         #print(pY)
         print("Improve accuracy by ",best_score-base_acc)
+        if (best_score-base_acc)<0.1:
+            return self.count
+		
         self.score=best_score
 
         if level==0:
@@ -340,8 +343,8 @@ class SVCTree:
 def main(samedata_file,diffdata_file):
     x,y,cols,symbol_vars=prepare_data(samedata_file,diffdata_file)
     #embed()
-    embed()
-    train(x,y,cols,symbol_vars)
+    #embed()
+    train(x,np.reshape(y,(-1,1)),cols,symbol_vars)
 
     #trainDT(x,y,cols,count,symbol_vars)
 def interpretable(out_filename,cols):
@@ -390,8 +393,8 @@ def train(X,Y,cols,symbol_vars):
     print("start")
     tree.build_svc(X,Y,level=6,base_acc=min_score)
     print ("end")
-    tree.export_to_dot('train-2.dot')
-    interpretable('train-2.dot',cols)
+    tree.export_to_dot("%s.dot"%args.outname)
+    interpretable("%s.dot"%args.outname,cols)
     embed()
 
 #main("cache-8.numpy.npz",None)
@@ -399,6 +402,7 @@ import argparse
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='match symbol')
     parser.add_argument('files',metavar='files',type=str,nargs="+",help='same file, diff file')
+    parser.add_argument('--outname',metavar='outname',type=str,default="out_train",help='outname')
     args=parser.parse_args()
     if len(args.files)==1:
         main(args.files[0],None)
