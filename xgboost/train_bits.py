@@ -57,19 +57,19 @@ def toLatex(rule_scores,filename,symbolmap={}):
     return ret
 #r=toLatex(rulelist,self.rule_latex,self.symbolmap)
 
-def trim_rule(rule_score,pddata,thres=0.05):
+def trim_rule(rule_score,pddata,sample_weight,thres=0.05):
 	rule=rule_score[0]
 	conds=rule.split(" and ")
 	score=rule_score[1]
 	newcond=set(conds)
 	for cond in conds:
-		newcond.remove(cond)
-		newrule=" and ".join(list(newcond))
-		new_score=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'])
-		if new_score[0]<score[0]*(1-thres):
-			newcond.add(cond)
+            newcond.remove(cond)
+            newrule=" and ".join(list(newcond))
+            new_score=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'],sample_weight)
+            if new_score[0]<score[0]*(1-thres):
+                    newcond.add(cond)
 	newrule=" and ".join(list(newcond))
-	newscore=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'])
+	newscore=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'],sample_weight)
 	return [newrule,newscore]
 
 class LeakageLearner:
@@ -83,20 +83,7 @@ class LeakageLearner:
         self.attacker_rulefile="%s_attacker.rule.txt"%self.args.outname
         self.rule_latex="%s_rule.tex"%self.args.outname
 
-    def trim_rule(self,rule_score):
-        rule=rule_score[0]
-        conds=rule.split(" and ")
-        score=rule_score[1]
-        newcond=set(conds)
-        for cond in conds:
-            newcond.remove(cond)
-            newrule=" and ".join(list(newcond))
-            new_score=xgbtree_rule_perf(str(newrule),self.pddata,self.pddata['Y'])
-            if new_score[0]<score[0]*0.97:
-                newcond.add(cond)
-        newrule=" and ".join(list(newcond))
-        newscore=xgbtree_rule_perf(str(newrule),self.pddata,self.pddata['Y'])
-        return [newrule,newscore]
+
     def saverules(self,rules,allrstat,filename):
         allscores=allrstat[1]
         with open(filename,'w') as f:
@@ -185,7 +172,7 @@ class LeakageLearner:
         clf.rules_.sort(key=lambda x: x[1],reverse=True)
         rules={}
         for i in range(len(clf.rules_)):
-            r=trim_rule(clf.rules_[i],self.pddata)
+            r=trim_rule(clf.rules_[i],self.pddata,sample_weight)
             rules[r[0]]=r[1]
         rulelist=[]
         for r in rules:
@@ -203,7 +190,7 @@ class LeakageLearner:
         allr1,allr=simplify_rules(clf.rules_)
         embed()
         #cnf=tocnffile(var_sizes,allr1,self.cnffile)
-        allrscore=xgbtree_rule_perf(str(allr1),self.pddata,self.pddata['Y'])
+        allrscore=xgbtree_rule_perf(str(allr1),self.pddata,self.pddata['Y'],sample_weight)
         print("all r=",simplify(~allr),allrscore)
         self.saverules(clf.rules_,[simplify(allr),allrscore],self.rulefile)
         if self.args.debug:
@@ -250,6 +237,7 @@ class LeakageLearner:
                     intCols.append(x_name)
         intData=pddata[intCols]
         lf=LinearFeature()
+        embed()
         lf.fit(intData)
         self.lf=lf
         feature,addeddata=lf.features(0.8)
