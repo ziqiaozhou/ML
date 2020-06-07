@@ -142,23 +142,26 @@ class LinearFeature:
 		regs=[]
 		self.anchors=anchors
 		for point in anchors.to_numpy():
-			dis=(data_scaled.iloc[:,1:]-point)
-			dis=(dis*dis).sum(axis=1)
-			idx=np.argsort(dis)
-			subsample_weight=np.copy(sample_weight)
-			#subsample_weight=subsample_weight/dis.to_numpy()
-			nSubSample=int(0.2*nSample)
-			#subsample_weight[idx[:nSubSample]]=0
-			#dis<0.2,1,0
-			subsample_weight=subsample_weight*np.where(dis<0.2,1,0)
-			nSubSample=np.where(subsample_weight>0)[0].shape[0]
-			#reg=LogisticRegression()
-			#LinearSVC()
-			reg=LinearSVC(penalty='l1',loss='squared_hinge',dual=False,C=4,max_iter=200,tol=0.001)
-			reg.fit(X,y,sample_weight=subsample_weight)
-			score=reg.score(X,y,sample_weight=subsample_weight)
-			globalscore=reg.score(X,y,sample_weight=sample_weight)
-			regs.append([reg,score,globalscore,reg.coef_,reg.intercept_,subsample_weight,nSubSample,point])
+                    dis=(data_scaled.iloc[:,1:]-point)
+                    dis=(dis*dis).sum(axis=1)
+                    idx=np.argsort(dis)
+                    subsample_weight=np.copy(sample_weight)
+                    #subsample_weight=subsample_weight/dis.to_numpy()
+                    nSubSample=int(0.2*nSample)
+                    #subsample_weight[idx[:nSubSample]]=0
+                    #dis<0.2,1,0
+                    subsample_weight=subsample_weight*np.where(dis<0.2,1,0)
+                    nSubSample=np.where(subsample_weight>0)[0].shape[0]
+                    #reg=LogisticRegression()
+                    #LinearSVC()
+                    reg=LinearSVC(penalty='l1',loss='squared_hinge',dual=False,C=4,max_iter=1000,tol=0.001)
+                    try:
+                        reg.fit(X,y,sample_weight=subsample_weight)
+                    except Exception:
+                        continue
+                    score=reg.score(X,y,sample_weight=subsample_weight)
+                    globalscore=reg.score(X,y,sample_weight=sample_weight)
+                    regs.append([reg,score,globalscore,reg.coef_,reg.intercept_,subsample_weight,nSubSample,point])
 		self.regs=regs
 		"""
 		clf2 = LogisticRegression(random_state=0,penalty='elasticnet',l1_ratio=0.5,multi_class='ovr',class_weight="balanced",solver='saga' )
