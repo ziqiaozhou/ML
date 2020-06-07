@@ -18,17 +18,28 @@ print("hi")
 data: pandas.dataframe
 """
 
-def toLatex(rule_scores,filename):
+def toLatex(rule_scores,filename,symbolmap={}):
+    typename={'s':r"\\SecFn{}",'salt':r"\\SecFnAlt{}",'I':r"\\AIIFn{}",'c':r"\\ACIFn{}"}
     def ruleToLatex(rule):
+        for fullname in symbolmap:
+            name=fullname.split("_")
+            param,offset=symbolmap[fullname]
+            name=name[0]
+            type=typename[name]
+            param=re.sub("([av])([a-z]*)Map_([0-9]*)_([0-9]*)",r"{\1}map[\3][\4]",param)
+            rule=re.sub("%s "%fullname,"%s(\\\\text{`%s'})[%d]"%(type,param,offset),rule)
         rule=re.sub("L_([0-9]*) ",r"\\linearFeature{\1}",rule)
         rule=re.sub("diff_s_([0-9]*) ",r"\\diffFeature{\1}",rule)
         rule=re.sub("s_([0-9]*) ",r"\\SecFn{}[\1]",rule)
         rule=re.sub("c_([0-9]*) ",r"\\ACIFn{}[\1]",rule)
         rule=re.sub("I_([0-9]*) ",r"\\AIIFn{}[\1]",rule)
         rule=re.sub("salt_([0-9]*)",r"\\SecFnAlt{}[\1]",rule)
+        rule=re.sub("([av])([a-z]*)Map_([0-9]*)_([0-9]*)",r"\\AIIFn{}(\\text{`{\1}map[\3][\4]}')",rule)
+        rule=re.sub("(secret )",r"\\SecFn{}(\\text{`secret'})",rule)
+        rule=re.sub("(secretalt )",r"\\SecFnAlt{}(\\text{`secret})",rule)
         rule=re.sub(">=",r"\\ge",rule)
         conds=rule.split(" and ")
-        conds.sort(key=lambda x: x[1],reverse=True)
+        conds.sort(key=lambda x: x,reverse=True)
         rule=" \\wedge ".join(conds)
         #rule=re.sub("and",r"\\wedge",rule)
         return rule
@@ -43,6 +54,8 @@ def toLatex(rule_scores,filename):
         i=i+1
     with open(filename,'w') as f:
         f.write("\n".join(ret))
+    return ret
+#r=toLatex(rulelist,self.rule_latex,self.symbolmap)
 
 def trim_rule(rule_score,pddata,thres=0.05):
 	rule=rule_score[0]
@@ -211,16 +224,19 @@ class LeakageLearner:
                     continuous[w[0]]=[]
                 continuous[w[0]].append((int(w[1]),int(w[2]),w[3]))
         ncols=pddata.shape[1]
+        self.symbolmap={}
         for xtype in continuous:
-            base=1;
             for x_range in continuous[xtype]:
                 x_name=x_range[2]
                 x_val=0
+                base=1;
                 start=x_range[0]
-                end=x_range[1]+start
+                size=x_range[1]
                 valid=True
-                for i in range(start,end):
+                for offset in range(size):
+                    i=start+offset
                     name="%s_%d"%(xtype,i)
+                    self.symbolmap[name]=[x_name,offset]
                     if name not in pddata.columns:
                         x_val=0
                         valid=False

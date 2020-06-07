@@ -154,7 +154,7 @@ class LinearFeature:
 			nSubSample=np.where(subsample_weight>0)[0].shape[0]
 			#reg=LogisticRegression()
 			#LinearSVC()
-			reg=LinearSVC(penalty='l1',loss='squared_hinge',dual=False,C=4,max_iter=200,tol=0.001)
+			reg=LinearSVC(penalty='l1',loss='squared_hinge',dual=False,C=4,max_iter=1000,tol=0.001)
 			reg.fit(X,y,sample_weight=subsample_weight)
 			score=reg.score(X,y,sample_weight=subsample_weight)
 			globalscore=reg.score(X,y,sample_weight=sample_weight)
