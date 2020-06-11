@@ -21,6 +21,7 @@ data: pandas.dataframe
 def toLatex(rule_scores,filename,symbolmap={}):
     typename={'s':r"\\SecFn{}",'salt':r"\\SecFnAlt{}",'I':r"\\AIIFn{}",'c':r"\\ACIFn{}"}
     def ruleToLatex(rule):
+        rule=re.sub("diff_s_([0-9]*) ",r"\\diffFeature{\1}",rule)
         for fullname in symbolmap:
             name=fullname.split("_")
             param,offset=symbolmap[fullname]
@@ -29,7 +30,6 @@ def toLatex(rule_scores,filename,symbolmap={}):
             param=re.sub("([av])([a-z]*)Map_([0-9]*)_([0-9]*)",r"{\1}map[\3][\4]",param)
             rule=re.sub("%s "%fullname,"%s(\\\\text{`%s'})[%d]"%(type,param,offset),rule)
         rule=re.sub("L_([0-9]*) ",r"\\linearFeature{\1}",rule)
-        rule=re.sub("diff_s_([0-9]*) ",r"\\diffFeature{\1}",rule)
         rule=re.sub("s_([0-9]*) ",r"\\SecFn{}[\1]",rule)
         rule=re.sub("c_([0-9]*) ",r"\\ACIFn{}[\1]",rule)
         rule=re.sub("I_([0-9]*) ",r"\\AIIFn{}[\1]",rule)
@@ -38,6 +38,8 @@ def toLatex(rule_scores,filename,symbolmap={}):
         rule=re.sub("(secret )",r"\\SecFn{}(\\text{`secret'})",rule)
         rule=re.sub("(secretalt )",r"\\SecFnAlt{}(\\text{`secret})",rule)
         rule=re.sub(">=",r"\\ge",rule)
+        rule=re.sub(r"text{`secret'}",r"secretVar",rule)
+        rule=re.sub(r"text{`secretalt'}",r"secretVar",rule)
         conds=rule.split(" and ")
         conds.sort(key=lambda x: x,reverse=True)
         rule=" \\wedge ".join(conds)
@@ -68,7 +70,9 @@ def trim_rule(rule_score,pddata,sample_weight,thres=0.05):
             new_score=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'],sample_weight)
             if new_score[0]<score[0]*(1-thres):
                     newcond.add(cond)
-	newrule=" and ".join(list(newcond))
+        newcondlist=list(newcond)
+        newcondlist.sort()
+	newrule=" and ".join(newcondlist)
 	newscore=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'],sample_weight)
 	return [newrule,newscore]
 
@@ -82,6 +86,8 @@ class LeakageLearner:
         self.attacker_modelfile="%s_attacker.model.txt"%self.args.outname
         self.attacker_rulefile="%s_attacker.rule.txt"%self.args.outname
         self.rule_latex="%s_rule.tex"%self.args.outname
+        self.in_param_file=self.args.param
+        self.param_file="%s_param.pkl"%(self.args.outname)
 
 
     def saverules(self,rules,allrstat,filename):
@@ -124,35 +130,29 @@ class LeakageLearner:
                 print(sym)
                 if len(symbol_vars[sym])>0:
                         feature_combination.append(symbol_vars[sym])
-        leakage_learner_constraints=feature_combination.copy()
-        attacker_learner_constraints=[]
-        """
-            leakage_learner_constraints.append(symbol_vars["s"]+symbol_vars["salt"])
-            leakage_learner_constraints.append(symbol_vars["I"]+symbol_vars['Ialt'])
-            leakage_learner_constraints.append(symbol_vars["s"]+symbol_vars["c"])
-            leakage_learner_constraints.append(symbol_vars["salt"]+symbol_vars["c"])
-            leakage_learner_constraints.append(symbol_vars["I"]+symbol_vars["c"])
-            leakage_learner_constraints.append(symbol_vars["Ialt"]+symbol_vars["c"])
-            attacker_learner_constraints.append(symbol_vars["I"]+symbol_vars['Ialt'])
-            attacker_learner_constraints.append(symbol_vars["I"]+symbol_vars["c"])
-            attacker_learner_constraints.append(symbol_vars["Ialt"]+symbol_vars["c"])
-        """
-        params={'max_depth': self.args.depth,
-                'eta': 1,
-                'nthread':16}
-        params['objective'] = 'binary:logistic'
-        params['max_leaves']=64
-        #params['tree_method']='hist'
-        params['grow_policy']='lossguide'
-        #params['subsample']=0.9
-        #params['gamma']=0.01 #Minimum loss reduction
-        #params['interaction_constraints']=leakage_learner_constraints
-        #params['booster']='dart'
-        #params['sample_type']='weighted'
-        #params['rate_drop']=0.1
-        #params['skip_drop']=0.5
-        #params['eval_metric']='error'
-        #params['scale_pos_weight']=np.where(y==0)[0].shape[0]/np.where(y==1)[0].shape[0]
+        import pickle
+        if self.in_param_file:
+            with open(self.in_param_file) as f:
+                params=pickle.load(f)
+        else:
+            params={'max_depth': self.args.depth,
+                    'eta': 1,
+                    'nthread':16}
+            params['objective'] = 'binary:logistic'
+            params['max_leaves']=64
+            #params['tree_method']='hist'
+            params['grow_policy']='lossguide'
+            #params['subsample']=0.9
+            params['gamma']=0.01 #Minimum loss reduction
+            #params['interaction_constraints']=leakage_learner_constraints
+            #params['booster']='dart'
+            params['sample_type']='weighted'
+            #params['rate_drop']=0.1
+            #params['skip_drop']=0.5
+            #params['normalize_type']='tree'
+        with open(self.param_file,'wb') as f:
+            pickle.dump(params,f)
+        print(self.linear)
         if self.args.debug:
             embed()
         model=xgboost.train(params = params,
@@ -237,8 +237,7 @@ class LeakageLearner:
                     intCols.append(x_name)
         intData=pddata[intCols]
         lf=LinearFeature()
-        embed()
-        lf.fit(intData)
+        lf.fit(intData,NStep=self.args.nlinear,thresDis=self.args.disThres)
         self.lf=lf
         feature,addeddata=lf.features(0.8)
         return feature,pd.DataFrame(data=addeddata)
@@ -274,7 +273,11 @@ if __name__=="__main__":
     parser.add_argument('--ntrees',type=int,default=10,help='decision trees')
     parser.add_argument('--outname',type=str,default="xgboost_1",help='outname')
     parser.add_argument('--symbol',type=str,default="symbol.txt",help='outname')
+    parser.add_argument('--param',type=str,default="",help='outname')
     parser.add_argument('--label',type=int,default=1,help='label value')
+    parser.add_argument('--nlinear',type=int,default=100,help='number of linear model ')
+
+    parser.add_argument('--disThres',type=float,default=0.2,help='local threshold')
     args=parser.parse_args()
     learner=LeakageLearner(args)
     learner.run()

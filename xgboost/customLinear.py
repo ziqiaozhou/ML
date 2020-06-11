@@ -118,62 +118,68 @@ class LinearFeature:
 			candidates=candidates[candidates[:,0]==0.5][:,1:]
 			midpoints=midpoints.append(pd.DataFrame(candidates,columns=xdata.columns),ignore_index=True,sort=False)
 		return midpoints
-	def fit(self,pddata,NStep=100):
-		selector = VarianceThreshold()
-		selector.fit(pddata)
-		drop=pddata.columns[selector.get_support()==False]
-		pddata.drop(columns=drop)
-		Xdata=pddata.iloc[:,1:]
-		Ydata=pddata.iloc[:,0:1]
-		X=self.X=Xdata.to_numpy()
-		y=self.y=Ydata.to_numpy()
-		nSample=y.shape[0]
-		#clf = LogisticRegression(random_state=0,penalty='l1',multi_class='ovr',class_weight="balanced",solver='liblinear')
-		#clf.fit(self.X, self.y)
-		#minc=np.min(np.abs(clf.coef_))
-		#maxc=np.max(np.abs(clf.coef_))
-		#idx=np.where(abs(clf.coef_)>(maxc-minc)*0.2+minc)[1]
-		trueIdx=np.where(y==1)[0]
-		falseIdx=np.where(y==0)[0]
-		data_scaled=(pddata-pddata.min()).div(pddata.max()-pddata.min())
-		midpoints=self.data2midpoints(pddata,Xdata)
-		anchors=midpoints.sample(NStep)
-		sample_weight=compute_sample_weight('balanced',y)
-		regs=[]
-		self.anchors=anchors
-		for point in anchors.to_numpy():
-			dis=(data_scaled.iloc[:,1:]-point)
-			dis=(dis*dis).sum(axis=1)
-			idx=np.argsort(dis)
-			subsample_weight=np.copy(sample_weight)
-			#subsample_weight=subsample_weight/dis.to_numpy()
-			nSubSample=int(0.2*nSample)
-			#subsample_weight[idx[:nSubSample]]=0
-			#dis<0.2,1,0
-			subsample_weight=subsample_weight*np.where(dis<0.2,1,0)
-			nSubSample=np.where(subsample_weight>0)[0].shape[0]
-			#reg=LogisticRegression()
-			#LinearSVC()
-			reg=LinearSVC(penalty='l1',loss='squared_hinge',dual=False,C=4,max_iter=1000,tol=0.001)
-			reg.fit(X,y,sample_weight=subsample_weight)
-			score=reg.score(X,y,sample_weight=subsample_weight)
-			globalscore=reg.score(X,y,sample_weight=sample_weight)
-			regs.append([reg,score,globalscore,reg.coef_,reg.intercept_,subsample_weight,nSubSample,point])
-		self.regs=regs
-		"""
-		clf2 = LogisticRegression(random_state=0,penalty='elasticnet',l1_ratio=0.5,multi_class='ovr',class_weight="balanced",solver='saga' )
-		#clf2=CustomLinearModel()
-		clf2.fit(X[:,idx],y)
-		pY=clf2.predict(X[:,idx])
-		leftIdx=np.where(pY==1)[0]
-		rightIdx=np.where(pY==0)[0]
-		self.left_data=pddata.iloc[leftIdx]
-		self.right_data=pddata.iloc[rightIdx]
-		self.clf=clf
-		self.clf2=clf2
-		"""
-		#self.idx=idx
-		self.feature_name=pddata.columns[1:]
+	def fit(self,pddata,NStep=100,thresDis=0.2):
+            selector = VarianceThreshold()
+            selector.fit(pddata)
+            drop=pddata.columns[selector.get_support()==False]
+            pddata.drop(columns=drop)
+            Xdata=pddata.iloc[:,1:]
+            Ydata=pddata.iloc[:,0:1]
+            X=self.X=Xdata.to_numpy()
+            y=self.y=Ydata.to_numpy()
+            nSample=y.shape[0]
+            #clf = LogisticRegression(random_state=0,penalty='l1',multi_class='ovr',class_weight="balanced",solver='liblinear')
+            #clf.fit(self.X, self.y)
+            #minc=np.min(np.abs(clf.coef_))
+            #maxc=np.max(np.abs(clf.coef_))
+            #idx=np.where(abs(clf.coef_)>(maxc-minc)*0.2+minc)[1]
+            trueIdx=np.where(y==1)[0]
+            falseIdx=np.where(y==0)[0]
+            data_scaled=(pddata-pddata.min()).div(pddata.max()-pddata.min())
+            midpoints=self.data2midpoints(pddata,Xdata)
+            anchors=midpoints.sample(NStep)
+            sample_weight=compute_sample_weight('balanced',y)
+            regs=[]
+            self.anchors=anchors
+            for point in anchors.to_numpy():
+                dis=(data_scaled.iloc[:,1:]-point)
+                dis=(dis*dis).sum(axis=1)
+                #idx=np.argsort(dis)
+                #subsample_weight=np.copy(sample_weight)
+                #subsample_weight=subsample_weight/dis.to_numpy()
+                #nSubSample=int(0.2*nSample)
+                #subsample_weight[idx[:nSubSample]]=0
+                #dis<0.2,1,0
+                #subsample_weight=subsample_weight*np.where(dis<thresDis,1,0)
+                local_index=np.where(dis<thresDis)
+                local_x=X[local_index]
+                local_y=y[local_index]
+                local_sample_weight=compute_sample_weight('balanced',local_y)
+                #reg=LogisticRegression()
+                #LinearSVC()
+                reg=LinearSVC(penalty='l1',loss='squared_hinge',dual=False,C=4,max_iter=400,tol=0.001)
+                try:
+                    reg.fit(local_x,local_y,sample_weight=local_sample_weight)
+                except Exception:
+                    continue
+                score=reg.score(local_x,local_y,sample_weight=local_sample_weight)
+                globalscore=reg.score(X,y,sample_weight=sample_weight)
+                regs.append([reg,score,globalscore,reg.coef_,reg.intercept_,local_sample_weight,local_y.shape,point])
+            self.regs=regs
+            """
+            clf2 = LogisticRegression(random_state=0,penalty='elasticnet',l1_ratio=0.5,multi_class='ovr',class_weight="balanced",solver='saga' )
+            #clf2=CustomLinearModel()
+            clf2.fit(X[:,idx],y)
+            pY=clf2.predict(X[:,idx])
+            leftIdx=np.where(pY==1)[0]
+            rightIdx=np.where(pY==0)[0]
+            self.left_data=pddata.iloc[leftIdx]
+            self.right_data=pddata.iloc[rightIdx]
+            self.clf=clf
+            self.clf2=clf2
+            """
+            #self.idx=idx
+            self.feature_name=pddata.columns[1:]
 	def fitNext(self):
 		lf=None
 		rf=None
