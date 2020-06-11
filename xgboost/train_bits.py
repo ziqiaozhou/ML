@@ -7,6 +7,10 @@ import xgboost
 import pandas as pd
 import numpy as np
 import re
+from sklearn.model_selection import GridSearchCV
+from sklearn.cross_validation import train_test_split
+from sklearn.cross_validation import *
+
 print("hi")
 from skrules.xgboost_rules import xgbtree_rule_perf,xgbtree_to_rules,tocnffile,simplify_rules,tosymrule
 from sympy import simplify
@@ -69,7 +73,7 @@ def trim_rule(rule_score,pddata,sample_weight,thres=0.05):
             newrule=" and ".join(list(newcond))
             new_score=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'],sample_weight)
             if new_score[0]<score[0]*(1-thres):
-                    newcond.add(cond)
+                newcond.add(cond)
         newcondlist=list(newcond)
         newcondlist.sort()
 	newrule=" and ".join(newcondlist)
@@ -112,6 +116,27 @@ class LeakageLearner:
         pdrules=pd.read_csv(filename)
         return pdrules
 
+    def tune(self):
+        xgb_model = xgboost.XGBClassifier()
+        params = {'nthread':[8], #when use hyperthread, xgboost may become slower
+            'objective':['binary:logistic'],
+            'learning_rate': [0.05,0.1,0.2], #so called `eta` value
+            'max_depth': [6,7,8],
+            'min_child_weight': [11],
+            'silent': [1],
+            'subsample': [0.8,1.0,0.6],
+            'colsample_bytree': [1.0,0.8,0.9],
+            'n_estimators': [16,32,64], #number of trees, change it to 1000 for better results
+            'seed': [1337],
+            'eta': [1,0.9],
+            'gamma': [0.01,0.02,0],
+            'sample_type':['weighted']}
+        clf = GridSearchCV(xgb_model, params, n_jobs=4,
+                   scoring='roc_auc',
+                   verbose=2, refit=True)
+        clf.fit(self.pddata[self.feature_names], self.pddata["Y"])
+        best_parameters, score, _ = max(clf.grid_scores_, key=lambda x: x[1])
+        return best_parameters
     def train(self,feature_names,symbol_vars):
     #model = xgboost.XGBClassifier(max_depth=7, n_estimators=10)
             #class_w=class_weight.compute_class_weight("balanced",np.unique(y),y)
@@ -119,11 +144,13 @@ class LeakageLearner:
         self.pddata['Y']=(self.pddata['Y']==self.args.label)
         X=self.pddata.iloc[:,1:].to_numpy()
         y=self.pddata['Y']
+        self.sample_weight=sample_weight
         data=xgboost.DMatrix(data=X,
                             label=y,
                             feature_names=feature_names,
                             feature_types=['int']*X.shape[-1],
                             weight=sample_weight)
+        self.feature_names=feature_names
         d=X.shape[-1]
         feature_combination=[]
         for sym in symbol_vars:
@@ -135,21 +162,11 @@ class LeakageLearner:
             with open(self.in_param_file) as f:
                 params=pickle.load(f)
         else:
-            params={'max_depth': self.args.depth,
-                    'eta': 1,
-                    'nthread':16}
-            params['objective'] = 'binary:logistic'
-            params['max_leaves']=64
-            #params['tree_method']='hist'
-            params['grow_policy']='lossguide'
-            #params['subsample']=0.9
-            params['gamma']=0.01 #Minimum loss reduction
-            #params['interaction_constraints']=leakage_learner_constraints
-            #params['booster']='dart'
-            params['sample_type']='weighted'
+            params=self.tune()
             #params['rate_drop']=0.1
             #params['skip_drop']=0.5
             #params['normalize_type']='tree'
+
         with open(self.param_file,'wb') as f:
             pickle.dump(params,f)
         print(self.linear)
