@@ -8,8 +8,6 @@ import pandas as pd
 import numpy as np
 import re
 from sklearn.model_selection import GridSearchCV
-from sklearn.cross_validation import train_test_split
-from sklearn.cross_validation import *
 
 print("hi")
 from skrules.xgboost_rules import xgbtree_rule_perf,xgbtree_to_rules,tocnffile,simplify_rules,tosymrule
@@ -64,21 +62,21 @@ def toLatex(rule_scores,filename,symbolmap={}):
 #r=toLatex(rulelist,self.rule_latex,self.symbolmap)
 
 def trim_rule(rule_score,pddata,sample_weight,thres=0.05):
-	rule=rule_score[0]
-	conds=rule.split(" and ")
-	score=rule_score[1]
-	newcond=set(conds)
-	for cond in conds:
-            newcond.remove(cond)
-            newrule=" and ".join(list(newcond))
-            new_score=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'],sample_weight)
-            if new_score[0]<score[0]*(1-thres):
-                newcond.add(cond)
-        newcondlist=list(newcond)
-        newcondlist.sort()
-	newrule=" and ".join(newcondlist)
-	newscore=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'],sample_weight)
-	return [newrule,newscore]
+    rule=rule_score[0]
+    conds=rule.split(" and ")
+    score=rule_score[1]
+    newcond=set(conds)
+    for cond in conds:
+        newcond.remove(cond)
+        newrule=" and ".join(list(newcond))
+        new_score=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'],sample_weight)
+        if new_score[0]<score[0]*(1-thres):
+            newcond.add(cond)
+    newcondlist=list(newcond)
+    newcondlist.sort()
+    newrule=" and ".join(newcondlist)
+    newscore=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'],sample_weight)
+    return [newrule,newscore]
 
 class LeakageLearner:
     def __init__(self,args):
@@ -120,22 +118,22 @@ class LeakageLearner:
         xgb_model = xgboost.XGBClassifier()
         params = {'nthread':[8], #when use hyperthread, xgboost may become slower
             'objective':['binary:logistic'],
-            'learning_rate': [0.05,0.1,0.2], #so called `eta` value
+            'learning_rate': [0.05,0.1,0.2,0.4], #so called `eta` value
             'max_depth': [6,7,8],
             'min_child_weight': [11],
             'silent': [1],
-            'subsample': [0.8,1.0,0.6],
-            'colsample_bytree': [1.0,0.8,0.9],
-            'n_estimators': [16,32,64], #number of trees, change it to 1000 for better results
-            'seed': [1337],
+            'subsample': [1.0],
+            'colsample_bytree': [1.0,0.9],
+            'n_estimators': [32,64], #number of trees, change it to 1000 for better results
             'eta': [1,0.9],
-            'gamma': [0.01,0.02,0],
+            'gamma': [0.01,0.02],
             'sample_type':['weighted']}
         clf = GridSearchCV(xgb_model, params, n_jobs=4,
-                   scoring='roc_auc',
+                   scoring='roc_auc',cv=2,
                    verbose=2, refit=True)
-        clf.fit(self.pddata[self.feature_names], self.pddata["Y"])
-        best_parameters, score, _ = max(clf.grid_scores_, key=lambda x: x[1])
+        sample=self.pddata.sample(10000)
+        clf.fit(sample[self.feature_names], sample["Y"])
+        best_parameters=clf.best_params_
         return best_parameters
     def train(self,feature_names,symbol_vars):
     #model = xgboost.XGBClassifier(max_depth=7, n_estimators=10)
