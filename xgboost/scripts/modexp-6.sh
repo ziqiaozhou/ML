@@ -1,0 +1,1 @@
+python3 train_bits.py ../data/modexp/6-bit-sample/same.csv  ../data/modexp/6-bit-sample/diff.csv  --outname=../data/modexp/6-bit-sample/ --symbol=../data/modexp/6-bit-sample/symbol.txt --ntrees=12 --depth=10

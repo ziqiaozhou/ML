@@ -1,0 +1,1 @@
+python3 train_bits.py ../data/modexp/8-bit-sample/same.csv  ../data/modexp/8-bit-sample/diff.csv  --outname=../data/modexp/8-bit-sample/ --symbol=../data/modexp/8-bit-sample/symbol.txt --ntrees=32 --depth=8
