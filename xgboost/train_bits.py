@@ -74,6 +74,7 @@ def trim_rule(rule_score,pddata,sample_weight,thres=0.05):
         new_score=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'],sample_weight)
         if new_score[0]<score[0]*(1-thres):
             newcond.add(cond)
+  	print("trim ", rule, " to ", newrule)
     newcondlist=list(newcond)
     newcondlist.sort()
     newrule=" and ".join(newcondlist)
@@ -122,13 +123,13 @@ class LeakageLearner:
         xgb_model = xgboost.XGBClassifier()
         params = {'nthread':[8], #when use hyperthread, xgboost may become slower
             'objective':['binary:logistic'],
-            'learning_rate': [0.05,0.1,0.2,0.4], #so called `eta` value
-            'max_depth': [6,7,8],
+            'learning_rate': [0.05,0.1,0.2], #so called `eta` value
+            'max_depth': [6,7],
             'min_child_weight': [11],
             'silent': [1],
             'subsample': [1.0],
             'colsample_bytree': [1.0,0.9],
-            'n_estimators': [32,64], #number of trees, change it to 1000 for better results
+            'n_estimators': [16,32,64], #number of trees, change it to 1000 for better results
             'eta': [1,0.9],
             'gamma': [0.01,0.02],
             'sample_type':['weighted']}
@@ -138,6 +139,7 @@ class LeakageLearner:
         sample=self.pddata.sample(10000)
         clf.fit(sample[self.feature_names], sample["Y"])
         best_parameters=clf.best_params_
+        embed()
         return best_parameters
     def train(self,feature_names,symbol_vars):
     #model = xgboost.XGBClassifier(max_depth=7, n_estimators=10)
@@ -195,7 +197,7 @@ class LeakageLearner:
         clf.rules_.sort(key=lambda x: x[1],reverse=True)
         rules={}
         for i in range(len(clf.rules_)):
-            r=trim_rule(clf.rules_[i],traindata,sample_weight)
+            r=trim_rule(clf.rules_[i],evaldata,eval_sample_weight)
             rules[r[0]]=r[1]
         rulelist=[]
         for r in rules:
