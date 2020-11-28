@@ -73,7 +73,7 @@ def trim_rule(rule_score,pddata,sample_weight,thres=0.01):
         newrule=" and ".join(list(newcond))
         new_score=xgbtree_rule_perf(str(newrule),pddata,pddata['Y'],sample_weight)
         if new_score[0]<score[0]*(1-thres):
-            newcond.add(cond)
+          newcond.add(cond)
   	print("trim ", rule, " to ", newrule)
     newcondlist=list(newcond)
     newcondlist.sort()
