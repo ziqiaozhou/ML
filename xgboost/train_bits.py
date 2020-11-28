@@ -7,7 +7,9 @@ import xgboost
 import pandas as pd
 import numpy as np
 import re
+import os
 from sklearn.model_selection import GridSearchCV
+import datetime
 
 print("hi")
 from skrules.xgboost_rules import xgbtree_rule_perf,xgbtree_to_rules,tocnffile,simplify_rules,tosymrule
@@ -81,6 +83,8 @@ def trim_rule(rule_score,pddata,sample_weight,thres=0.05):
 class LeakageLearner:
     def __init__(self,args):
         self.args=args
+        self.outname = os.path.basename(self.args.outname)
+        self.outdir = os.path.dirname(self.args.outname)
         self.cnffile="%s.cnf"%self.args.outname
         self.modelfile="%s.model.txt"%self.args.outname
         self.rulefile="%s.rule.txt"%self.args.outname
@@ -107,9 +111,9 @@ class LeakageLearner:
                 r=r.replace(">= 1","= 1")
                 r=r.replace("< 1","= 0")
                 r=re.sub(r'([a-zA-Z]*)_([0-9]*)',r'\1_{\2}',r)
-                f.write("$%s$&%.2f&%.2f&%d\\\\\n"%(r,scores[0],scores[1],scores[2]))
+                f.write("$%s$&%.5f&%.5f&%d\\\\\n"%(r,scores[0],scores[1],scores[2]))
 
-            f.write("$%s$&%.2f&%.2f&--\\\\\n"%(str(allrstat[0]),allscores[0],allscores[1]))
+            f.write("$%s$&%.5f&%.5f&--\\\\\n"%(str(allrstat[0]),allscores[0],allscores[1]))
     def loadrules(self,filename):
         pdrules=pd.read_csv(filename)
         return pdrules
@@ -138,10 +142,13 @@ class LeakageLearner:
     def train(self,feature_names,symbol_vars):
     #model = xgboost.XGBClassifier(max_depth=7, n_estimators=10)
             #class_w=class_weight.compute_class_weight("balanced",np.unique(y),y)
-        sample_weight=class_weight.compute_sample_weight("balanced",self.pddata['Y'])
         self.pddata['Y']=(self.pddata['Y']==self.args.label)
-        X=self.pddata.iloc[:,1:].to_numpy()
-        y=self.pddata['Y']
+        self.pddata.to_csv(os.path.join(self.outdir,self.outname+datetime.datetime.now().strftime("%Y_%m_%d_%H_%M.csv")))
+        traindata=self.pddata.sample(frac=0.5, replace=True)
+        traindata=traindata.reset_index(drop=1)
+        sample_weight=class_weight.compute_sample_weight("balanced",traindata['Y'])
+        X=traindata.iloc[:,1:].to_numpy()
+        y=traindata['Y']
         self.sample_weight=sample_weight
         data=xgboost.DMatrix(data=X,
                             label=y,
@@ -176,18 +183,19 @@ class LeakageLearner:
                         )
         model.dump_model(self.modelfile, with_stats=True)
         clf = SkopeRules(max_depth_duplication=self.args.depth,
-                                 precision_min=0.6,
-                                 recall_min=0.01,
+                                 precision_min=0.55,
+                                 recall_min=0.005,
                                  verbose=1,
                                  feature_names=feature_names)
-        evaldata=self.pddata.sample(frac=0.3, replace=True)
-        evaldata=evaldata.reset_index()
+        evaldata=self.pddata.sample(frac=0.1, replace=True)
+        evaldata=evaldata.reset_index(drop=1)
         eval_sample_weight=class_weight.compute_sample_weight("balanced",evaldata['Y'])
         clf.fit_xgbmodel(evaldata, model, eval_sample_weight)
+        print("end fit_xgbmodel")
         clf.rules_.sort(key=lambda x: x[1],reverse=True)
         rules={}
         for i in range(len(clf.rules_)):
-            r=trim_rule(clf.rules_[i],self.pddata,sample_weight)
+            r=trim_rule(clf.rules_[i],traindata,sample_weight)
             rules[r[0]]=r[1]
         rulelist=[]
         for r in rules:
@@ -203,9 +211,8 @@ class LeakageLearner:
         sym_vars=symbol_vars
         var_sizes=[len(sym_vars['c']), len(sym_vars['I']), len(sym_vars['Ialt']), len(sym_vars['s']), len(sym_vars['salt'])]
         allr1,allr=simplify_rules(clf.rules_)
-        embed()
         #cnf=tocnffile(var_sizes,allr1,self.cnffile)
-        allrscore=xgbtree_rule_perf(str(allr1),self.pddata,self.pddata['Y'],sample_weight)
+        allrscore=xgbtree_rule_perf(str(allr1),evaldata,evaldata['Y'],eval_sample_weight)
         print("all r=",simplify(~allr),allrscore)
         self.saverules(clf.rules_,[simplify(allr),allrscore],self.rulefile)
         if self.args.debug:
@@ -258,7 +265,7 @@ class LeakageLearner:
         return feature,pd.DataFrame(data=addeddata)
 
     def main(self,samedata_file,diffdata_file):
-        X,y,feature_names,symbol_vars=prepare_data(samedata_file,diffdata_file)
+        X,y,feature_names,symbol_vars=prepare_data(samedata_file,diffdata_file,self.args.outname)
         #embed()
         pddata=pd.DataFrame(X,columns=feature_names)
         pddata.insert(0, 'Y',  y)
@@ -270,9 +277,11 @@ class LeakageLearner:
                 val=abs(pddata[name]-pddata[name2])
                 addeddata["diff_%s"%name]=val.to_numpy()
         pddata=pddata.join(pd.DataFrame(data=addeddata))
+        dirname=os.path.dirname(samedata_file)
         self.pddata=pddata
         feature_names=pddata.columns[1:]
         self.train(feature_names,symbol_vars)
+        
 
     def run(self):
         if len(args.files)==1:

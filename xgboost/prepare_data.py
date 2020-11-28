@@ -7,6 +7,8 @@ import datetime
 import numpy as np
 from sklearn.feature_selection import RFE, VarianceThreshold,SelectKBest, chi2
 from sklearn.decomposition import SparsePCA
+import os
+
 def getSymVar(columns):
     symbol_vars={"c":[],"I":[],"Ialt":[],"s":[],"salt":[]}
     for offset,sym_name in enumerate(columns):
@@ -15,10 +17,12 @@ def getSymVar(columns):
         index=all[1]
         symbol_vars[label].append(offset)
     return symbol_vars
-def prepare_data(samedata_file,diffdata_file):
+
+def prepare_data(samedata_file,diffdata_file=None, outname=None):
     if diffdata_file==None:
         data=pd.read_csv(samedata_file)
-        return (data[data.columns[2:]].to_numpy(),data["Y"].to_numpy(),data.columns[2:],getSymVar(data.columns[2:]))
+        x = data[data.columns[2:]]
+        return (x.to_numpy(),data["Y"].to_numpy(),x.columns,getSymVar(x.columns))
     same_data=pd.read_csv(samedata_file,header=None,na_values=[' x'])
     same_data.insert(0, 'Y', [0]*len(same_data))
     diff_data=pd.read_csv(diffdata_file,header=None,na_values=[' x'])
@@ -55,7 +59,8 @@ def prepare_data(samedata_file,diffdata_file):
     to_del_index=list(set(range(data.shape[-1]))-set([0])-set(index))
     data.drop(data.columns[to_del_index],axis=1,inplace=True)
     #del data.ix[:,to_del_index]
-    data.to_csv(now.strftime("%Y_%m_%d_%H_%M_%S.csv"))
+    dirname = os.path.dirname(samedata_file)
+    data.to_csv(now.strftime(os.path.join(dirname,"same_diff.csv")))
     #transformer = SparsePCA(n_components=, random_state=0)
     #transformer.fit(data.to_numpy())
     #X_transformed = transformer.transform(data.to_numpy())
