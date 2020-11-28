@@ -168,13 +168,14 @@ class LeakageLearner:
                             dtrain=data,
                             num_boost_round=self.args.ntrees,
                         )
+
         else:
             t_clf=self.tune()
             model = t_clf.best_estimator_._Booster
+            params=clf.best_params_
             #params['rate_drop']=0.1
             #params['skip_drop']=0.5
             #params['normalize_type']='tree'
-
         with open(self.param_file,'wb') as f:
             pickle.dump(params,f)
         print(self.linear)
