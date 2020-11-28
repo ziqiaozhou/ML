@@ -38,7 +38,7 @@ class DAG:
       self.graph.add_node(nodename,label = r)
     print(self.rules)
   def __init__(self,rulef, outf, args):
-    self.sortby={"precision": (lambda x: (-x[1],-x[2],x[0])), "recall": (lambda x: (-x[2],-x[1],x[0])), "f1": (lambda x: (-x[1]*x[2]/(x[1]+x[2]),x[0])) }
+    self.sortby={"precision": (lambda x: (-x[1],-x[2])), "recall": (lambda x: (-x[2],-x[1])), "f1": (lambda x: (-x[1]*x[2]/(x[1]+x[2]),x[0])) }
     self.rules = []
     self.redudant=set()
     self.args=args
