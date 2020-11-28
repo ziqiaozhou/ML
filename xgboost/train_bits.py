@@ -142,7 +142,7 @@ class LeakageLearner:
             #class_w=class_weight.compute_class_weight("balanced",np.unique(y),y)
         self.pddata['Y']=(self.pddata['Y']==self.args.label)
         self.pddata.to_csv(os.path.join(self.outdir,self.outname+datetime.datetime.now().strftime("%Y_%m_%d_%H_%M.csv")))
-        traindata=self.pddata.sample(frac=0.5, replace=True)
+        traindata=self.pddata.sample(frac=0.8, replace=True)
         traindata=traindata.reset_index(drop=1)
         sample_weight=class_weight.compute_sample_weight("balanced",traindata['Y'])
         X=traindata.iloc[:,1:].to_numpy()
@@ -187,7 +187,7 @@ class LeakageLearner:
                                  recall_min=0.005,
                                  verbose=1,
                                  feature_names=feature_names)
-        evaldata=self.pddata.sample(frac=0.1, replace=True)
+        evaldata=self.pddata.sample(frac=0.3, replace=True)
         evaldata=evaldata.reset_index(drop=1)
         eval_sample_weight=class_weight.compute_sample_weight("balanced",evaldata['Y'])
         clf.fit_xgbmodel(evaldata, model, eval_sample_weight)

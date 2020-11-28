@@ -64,7 +64,7 @@ class DAG:
 	def accumulated(self):
 		print("accumulated")
 		self.alldata=pd.read_csv(self.args.data)
-		self.pddata=self.alldata.sample(frac=0.2, replace=True)
+		self.pddata=self.alldata.sample(frac=0.5, replace=True)
 		self.pddata=self.pddata.reset_index(drop=1)
 		#embed()
 		sample_weight=class_weight.compute_sample_weight("balanced",self.pddata['Y'])
