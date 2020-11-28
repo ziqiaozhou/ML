@@ -38,7 +38,9 @@ class DAG:
 			self.graph.add_node(nodename,label = r)
 		print(self.rules)
 	def __init__(self,rulef, outf, args):
+		self.sortby={"precision": (lambda x: (-x[1],-x[2],x[0])), "recall": (lambda x: (-x[2],-x[1],x[0])), "f1": (lambda x: (-x[1]*x[2]/(x[1]+x[2]),x[0])) }
 		self.rules = []
+		self.redudant=set()
 		self.args=args
 		self.nodenames = []
 		self.rule_perf = []
@@ -75,7 +77,7 @@ class DAG:
 		out=""
 		self.rule_perf=sorted(self.rule_perf,key = lambda x: -x[1]*x[2]/(x[1]+x[2]))
 		#self.rule_perf=sorted(self.rule_perf,key = lambda x: -x[1]*x[2]/(x[1]+x[2]))
-		index_set = set(range(len(self.rule_perf)))
+		index_set = set(range(len(self.rule_perf)))-self.redudant
 		print(index_set)
 		count = 0
 		while index_set:
@@ -89,7 +91,7 @@ class DAG:
 				tmp_r = acculated_r | r
 				precision, recall = xgbtree_rule_perf(str(tmp_r),self.pddata,self.pddata['Y'],sample_weight)
 				candidates.append((index,precision,recall,tmp_r))
-			candidates = sorted(candidates, key = lambda x: (-x[1],-x[2],x[0]))
+			candidates = sorted(candidates, key = self.sortby[self.args.sort])
 			print("candidates",candidates)
 			i,acculated_p,acculated_recall, tmp_r	= candidates[0]
 			index_set.remove(i)
@@ -106,9 +108,26 @@ class DAG:
 			out =out + f"{r}, {acculated_p}, {acculated_recall},{precision},{recall}\n"
 		"""
 		print(out)
-		with open(os.path.join(os.path.dirname(self.rulef),os.path.splitext(os.path.basename(self.rulef))[0]+"-accumulated.txt"),"w") as f:
+		with open(os.path.join(os.path.dirname(self.rulef),os.path.splitext(os.path.basename(self.rulef))[0]+"-{self.args.sort}-accumulated.txt"),"w") as f:
 			f.write(out)
-		
+
+	def dedup(self):
+		n = min(50,len(self.rules))
+		for i in range(n):
+			for j in range(n):
+				if i == j:
+					continue
+				r1 = self.rules[i]
+				r2 = self.rules[j]
+				r12 = simplify((~r1)&r2)
+				print(f"{r1},{r2},{r12}")
+				if str(r12) == "False":
+					self.redudant.add(j)
+		for i in range(n):
+			if i not in self.redudant:
+				out = out + f"{self.rule_perf[i][0]},{self.rule_perf[i][1]},{self.rule_perf[i][2]}\n"
+		with open(os.path.join(os.path.dirname(self.rulef),os.path.splitext(os.path.basename(self.rulef))[0]+"-noredudant.txt"),"w") as f:
+			f.write(out)
 
 	def to_dag(self):
 		n = len(self.rules) 
@@ -161,6 +180,11 @@ if __name__=="__main__":
 	parser.add_argument('rulefile',metavar='files',type=str,help='.rule.txt files')
 	parser.add_argument('--outname',type=str,default="out.dag",help='outname')
 	parser.add_argument('--data',type=str,default="data.csv",help='data csv')
+	parser.add_argument('--mode',type=str,default="acc",help='data csv')
+	parser.add_argument('--sort',type=str,default="precision",help='sort by')
 	args=parser.parse_args()
 	dag = DAG(args.rulefile, args.outname, args)
-	dag.accumulated()
+	if args.mode == "acc":
+		dag.accumulated()
+	if args.mode == "dedup":
+		dag.dedup()

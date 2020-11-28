@@ -137,6 +137,7 @@ class LeakageLearner:
         clf.fit(sample[self.feature_names], sample["Y"])
         best_parameters=clf.best_params_
         return clf
+				
     def train(self,feature_names,symbol_vars):
     #model = xgboost.XGBClassifier(max_depth=7, n_estimators=10)
             #class_w=class_weight.compute_class_weight("balanced",np.unique(y),y)
