@@ -51,9 +51,10 @@ class DAG:
 		
 		for line in lines[1:-2]:
 			rule_perf = line.split(",")
+			cr=tosymrule(rule_perf[0])[0]
 			r=tosymrule(rule_perf[0])[1]
 			self.rules.append(r)
-			self.rule_perf.append((r,float(rule_perf[1]),float(rule_perf[2])))
+			self.rule_perf.append((cr,float(rule_perf[1]),float(rule_perf[2])))
 			p = f"precision: {rule_perf[1]}\nrecall: {rule_perf[2]}"
 			nodename=f"{r}\n{p}"
 			self.nodenames.append(nodename)
