@@ -124,7 +124,7 @@ class LeakageLearner:
         params = {'nthread':[8], #when use hyperthread, xgboost may become slower
             'objective':['binary:logistic'],
             'learning_rate': [0.05,0.1,0.2], #so called `eta` value
-            'max_depth': [6,7],
+            'max_depth': [6,8,10],
             'min_child_weight': [11],
             'silent': [1],
             'subsample': [1.0],
@@ -185,7 +185,7 @@ class LeakageLearner:
                         )
         model.dump_model(self.modelfile, with_stats=True)
         clf = SkopeRules(max_depth_duplication=self.args.depth,
-                                 precision_min=0.55,
+                                 precision_min=0.6,
                                  recall_min=0.005,
                                  verbose=1,
                                  feature_names=feature_names)
