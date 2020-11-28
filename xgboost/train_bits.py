@@ -133,7 +133,7 @@ class LeakageLearner:
         clf = GridSearchCV(xgb_model, params, n_jobs=4,
                    scoring='roc_auc',cv=2,
                    verbose=2, refit=True)
-        sample=self.pddata.sample(10000)
+        sample = self.pddata
         clf.fit(sample[self.feature_names], sample["Y"])
         best_parameters=clf.best_params_
         return clf
