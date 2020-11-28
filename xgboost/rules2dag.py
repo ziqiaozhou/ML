@@ -85,7 +85,7 @@ class DAG:
 				precision, recall = xgbtree_rule_perf(str(tmp_r),self.pddata,self.pddata['Y'],sample_weight)
 				candidates.append((index,precision,recall,tmp_r))
 			candidates = sorted(candidates, key = lambda x: (-x[1],-x[2],x[0]))
-			print("candidates":candidates)
+			print("candidates",candidates)
 			i,acculated_p,acculated_recall, tmp_r	= candidates[0]
 			index_set.remove(i)
 			r,precision,recall = self.rule_perf[i]
