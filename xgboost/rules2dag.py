@@ -75,7 +75,7 @@ class DAG:
     acculated_p = 0
     acculated_recall = 0
     out=""
-    self.rule_perf=sorted(self.rule_perf,key = lambda x: self.sortby[self.args.sort])
+    self.rule_perf=sorted(self.rule_perf,key = self.sortby[self.args.sort])
     #self.rule_perf=sorted(self.rule_perf,key = lambda x: -x[1]*x[2]/(x[1]+x[2]))
     index_set = set(range(len(self.rule_perf)))-self.redudant
     print(index_set)
