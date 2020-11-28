@@ -73,11 +73,14 @@ class DAG:
 		acculated_recall = 0
 		out=""
 		self.rule_perf=sorted(self.rule_perf,key = lambda x: (-x[1],-x[2]))
-		embed()
 		#self.rule_perf=sorted(self.rule_perf,key = lambda x: -x[1]*x[2]/(x[1]+x[2]))
 		index_set = set(range(len(self.rule_perf)))
 		print(index_set)
+		count = 0
 		while index_set:
+			count=count+1
+			if count==51:
+				break
 			pick_index=0
 			candidates=[]
 			for index in list(index_set)[:4]:

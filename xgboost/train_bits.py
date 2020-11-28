@@ -63,7 +63,7 @@ def toLatex(rule_scores,filename,symbolmap={}):
     return ret
 #r=toLatex(rulelist,self.rule_latex,self.symbolmap)
 
-def trim_rule(rule_score,pddata,sample_weight,thres=0.05):
+def trim_rule(rule_score,pddata,sample_weight,thres=0.01):
     rule=rule_score[0]
     conds=rule.split(" and ")
     score=rule_score[1]
