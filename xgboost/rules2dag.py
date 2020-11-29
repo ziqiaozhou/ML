@@ -110,6 +110,41 @@ class DAG:
     print(out)
     with open(os.path.join(os.path.dirname(self.rulef),os.path.splitext(os.path.basename(self.rulef))[0]+f"-{self.args.sort}-accumulated.txt"),"w") as f:
       f.write(out)
+      
+  def ind_accumulated(self):
+    print("accumulated")
+    self.alldata=pd.read_csv(self.args.data)
+    self.pddata=self.alldata.sample(frac=0.3, replace=True)
+    self.pddata=self.pddata.reset_index(drop=1)
+    #embed()
+    sample_weight=class_weight.compute_sample_weight("balanced",self.pddata['Y'])
+    acculated_r = False
+    acculated_p = 0
+    acculated_recall = 0
+    out=""
+    self.rule_perf=sorted(self.rule_perf,key = self.sortby[self.args.sort])
+    #self.rule_perf=sorted(self.rule_perf,key = lambda x: -x[1]*x[2]/(x[1]+x[2]))
+    index_set = set(range(len(self.rule_perf)))-self.redudant
+    print(index_set)
+    count = 0
+    for i in range(len(self.rule_perf)):
+			r, precision, recall = self.rule_perf[index]
+			acculated_r = acculated_r | r
+			acculated_p, acculated_recall = xgbtree_rule_perf(str(tmp_r),self.pddata,self.pddata['Y'],sample_weight)
+      i,acculated_p,acculated_recall, tmp_r  = candidates[0]
+      out =out + f"acc:{r}, {acculated_p}, {acculated_recall},{precision},{recall}\n"
+    """
+    for r, precision, recall in self.rule_perf:
+      if not acculated_r:
+        acculated_r= r
+      else:
+        acculated_r = acculated_r | r
+      acculated_p, acculated_recall = xgbtree_rule_perf(str(acculated_r),self.pddata,self.pddata['Y'],sample_weight)
+      out =out + f"{r}, {acculated_p}, {acculated_recall},{precision},{recall}\n"
+    """
+    print(out)
+    with open(os.path.join(os.path.dirname(self.rulef),os.path.splitext(os.path.basename(self.rulef))[0]+f"-ind-{self.args.sort}-accumulated.txt"),"w") as f:
+      f.write(out)
 
   def dedup(self):
     n = min(50,len(self.rules))
