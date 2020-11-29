@@ -81,9 +81,6 @@ class DAG:
     print(index_set)
     count = 0
     while index_set:
-      count=count+1
-      if count==51:
-        break
       pick_index=0
       candidates=[]
       for index in list(index_set)[:4]:
