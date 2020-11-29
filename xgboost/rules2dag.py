@@ -111,7 +111,7 @@ class DAG:
       out =out + f"{r}, {acculated_p}, {acculated_recall},{precision},{recall}\n"
     """
     print(out)
-    with open(os.path.join(os.path.dirname(self.rulef),os.path.splitext(os.path.basename(self.rulef))[0]+f"-{self.args.sort}-accumulated.txt"),"w") as f:
+    with open(os.path.join(os.path.dirname(self.rulef),os.path.splitext(os.path.basename(self.rulef))[0]+f"-{self.args.sort}-{self.args.dev_ratio}-accumulated.txt"),"w") as f:
       f.write(out)
       
   def ind_accumulated(self):
