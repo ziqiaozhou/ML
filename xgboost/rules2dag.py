@@ -221,5 +221,7 @@ if __name__=="__main__":
   dag = DAG(args.rulefile, args.outname, args)
   if args.mode == "acc":
     dag.accumulated()
+  if args.mode == "indacc":
+    dag.ind_accumulated()
   if args.mode == "dedup":
     dag.dedup()
