@@ -127,7 +127,7 @@ class DAG:
     for i in range(len(self.rule_perf)):
       r, precision, recall = self.rule_perf[i]
       acculated_r = acculated_r | r
-      acculated_p, acculated_recall = xgbtree_rule_perf(str(tmp_r),self.pddata,self.pddata['Y'],sample_weight)
+      acculated_p, acculated_recall = xgbtree_rule_perf(str(acculated_r),self.pddata,self.pddata['Y'],sample_weight)
       out =out + f"acc:{r}, {acculated_p}, {acculated_recall},{precision},{recall}\n"
     print(out)
     with open(os.path.join(os.path.dirname(self.rulef),os.path.splitext(os.path.basename(self.rulef))[0]+f"-ind-{self.args.sort}-accumulated.txt"),"w") as f:
