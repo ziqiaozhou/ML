@@ -111,7 +111,7 @@ class DAG:
   def ind_accumulated(self):
     print("accumulated")
     self.alldata=pd.read_csv(self.args.data)
-    self.pddata=self.alldata.sample(frac=0.3, replace=True)
+    self.pddata=self.alldata.sample(frac=0.25, replace=True)
     self.pddata=self.pddata.reset_index(drop=1)
     #embed()
     sample_weight=class_weight.compute_sample_weight("balanced",self.pddata['Y'])
@@ -125,7 +125,7 @@ class DAG:
     print(index_set)
     count = 0
     for i in range(len(self.rule_perf)):
-      r, precision, recall = self.rule_perf[index]
+      r, precision, recall = self.rule_perf[i]
       acculated_r = acculated_r | r
       acculated_p, acculated_recall = xgbtree_rule_perf(str(tmp_r),self.pddata,self.pddata['Y'],sample_weight)
       i,acculated_p,acculated_recall, tmp_r  = candidates[0]
