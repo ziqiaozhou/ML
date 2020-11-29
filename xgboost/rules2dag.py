@@ -125,20 +125,11 @@ class DAG:
     print(index_set)
     count = 0
     for i in range(len(self.rule_perf)):
-			r, precision, recall = self.rule_perf[index]
-			acculated_r = acculated_r | r
-			acculated_p, acculated_recall = xgbtree_rule_perf(str(tmp_r),self.pddata,self.pddata['Y'],sample_weight)
+      r, precision, recall = self.rule_perf[index]
+      acculated_r = acculated_r | r
+      acculated_p, acculated_recall = xgbtree_rule_perf(str(tmp_r),self.pddata,self.pddata['Y'],sample_weight)
       i,acculated_p,acculated_recall, tmp_r  = candidates[0]
       out =out + f"acc:{r}, {acculated_p}, {acculated_recall},{precision},{recall}\n"
-    """
-    for r, precision, recall in self.rule_perf:
-      if not acculated_r:
-        acculated_r= r
-      else:
-        acculated_r = acculated_r | r
-      acculated_p, acculated_recall = xgbtree_rule_perf(str(acculated_r),self.pddata,self.pddata['Y'],sample_weight)
-      out =out + f"{r}, {acculated_p}, {acculated_recall},{precision},{recall}\n"
-    """
     print(out)
     with open(os.path.join(os.path.dirname(self.rulef),os.path.splitext(os.path.basename(self.rulef))[0]+f"-ind-{self.args.sort}-accumulated.txt"),"w") as f:
       f.write(out)
