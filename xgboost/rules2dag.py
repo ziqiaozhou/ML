@@ -74,6 +74,8 @@ class DAG:
     acculated_r = False
     acculated_p = 0
     acculated_recall = 0
+    prev_p=0
+    prev_recall = 0
     out=""
     self.rule_perf=sorted(self.rule_perf,key = self.sortby[self.args.sort])
     #self.rule_perf=sorted(self.rule_perf,key = lambda x: -x[1]*x[2]/(x[1]+x[2]))
@@ -93,8 +95,12 @@ class DAG:
       i,acculated_p,acculated_recall, tmp_r  = candidates[0]
       index_set.remove(i)
       r,precision,recall = self.rule_perf[i]
+      if acculated_recall <= prev_recall*self.args.dev_ratio:
+        continue
       acculated_r = acculated_r|r
-      out =out + f"acc:{r}, {acculated_p}, {acculated_recall},{precision},{recall}\n"
+      prev_p=acculated_p
+      prev_recall = acculated_recall
+      out =out + f"{i}:{r}, {acculated_p}, {acculated_recall},{precision},{recall}\n"
     """
     for r, precision, recall in self.rule_perf:
       if not acculated_r:
@@ -118,6 +124,8 @@ class DAG:
     acculated_r = False
     acculated_p = 0
     acculated_recall = 0
+    prev_p=0
+    prev_recall = 0
     out=""
     self.rule_perf=sorted(self.rule_perf,key = self.sortby[self.args.sort])
     #self.rule_perf=sorted(self.rule_perf,key = lambda x: -x[1]*x[2]/(x[1]+x[2]))
@@ -128,9 +136,13 @@ class DAG:
       r, precision, recall = self.rule_perf[i]
       acculated_r = acculated_r | r
       acculated_p, acculated_recall = xgbtree_rule_perf(str(acculated_r),self.pddata,self.pddata['Y'],sample_weight)
-      out =out + f"acc:{r}, {acculated_p}, {acculated_recall},{precision},{recall}\n"
+      if acculated_recall <= prev_recall*self.args.dev_ratio:
+        continue
+      prev_p=acculated_p
+      prev_recall = acculated_recall
+      out =out + f"{i}:{r}, {acculated_p}, {acculated_recall},{precision},{recall}\n"
     print(out)
-    with open(os.path.join(os.path.dirname(self.rulef),os.path.splitext(os.path.basename(self.rulef))[0]+f"-ind-{self.args.sort}-accumulated.txt"),"w") as f:
+    with open(os.path.join(os.path.dirname(self.rulef),os.path.splitext(os.path.basename(self.rulef))[0]+f"-ind-{self.args.sort}-{self.args.dev_ratio}-accumulated.txt"),"w") as f:
       f.write(out)
 
   def dedup(self):
@@ -201,6 +213,7 @@ if __name__=="__main__":
   parser = argparse.ArgumentParser(description='match symbol')
   parser.add_argument('rulefile',metavar='files',type=str,help='.rule.txt files')
   parser.add_argument('--outname',type=str,default="out.dag",help='outname')
+  parser.add_argument('--dev_ratio',type=float,default=1,help='outname')
   parser.add_argument('--data',type=str,default="data.csv",help='data csv')
   parser.add_argument('--mode',type=str,default="acc",help='data csv')
   parser.add_argument('--sort',type=str,default="precision",help='sort by')
